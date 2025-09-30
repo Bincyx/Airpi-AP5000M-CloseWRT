@@ -59,9 +59,9 @@ jobs:
       #默认主题
       WRT_THEME: argon
       #默认主机名
-      WRT_NAME: Airpi
+      WRT_NAME: Airpi-AP5000M
       #默认WIFI名称
-      WRT_SSID: Airpi
+      WRT_SSID: Airpi-AP5000M
       #默认WIFI密码
       WRT_WORD: 无
       #默认地址
