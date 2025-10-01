@@ -156,6 +156,7 @@ jobs:
 
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          ./scripts/feeds install -a -f -p qmodem
 
       - name: Custom Packages
         run: |
