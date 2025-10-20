@@ -11,7 +11,7 @@ CONFIG_PACKAGE_luci-app-filemanager=y
 CONFIG_PACKAGE_luci-app-dockerman=y
 CONFIG_PACKAGE_luci-app-store=y
 
-CONFIG_CCACHE=y
+#CONFIG_CCACHE=y
 CONFIG_DEVEL=y
 
 CONFIG_PACKAGE_luci-app-qmodem=y
