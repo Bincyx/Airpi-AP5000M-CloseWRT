@@ -61,7 +61,7 @@ jobs:
       #默认主机名
       WRT_NAME: H5000M
       #默认WIFI名称
-      WRT_SSID: Hiveton
+      WRT_SSID: Airpi
       #默认WIFI密码
       WRT_WORD: 无
       #默认地址
