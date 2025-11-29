@@ -46,10 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - CONFIG: modem
-            SOURCE: padavanonly/immortalwrt-mt798x-6.6
-            BRANCH: mt798x-mt799x-6.6-mtwifi
+        include:          
           - CONFIG: qmodem
             SOURCE: padavanonly/immortalwrt-mt798x-6.6
             BRANCH: mt798x-mt799x-6.6-mtwifi
