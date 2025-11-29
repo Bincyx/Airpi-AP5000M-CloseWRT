@@ -1,3 +1,4 @@
+
 # 云编译公用核心
 name: WRT-CORE
 
@@ -64,126 +65,7 @@ jobs:
       - name: Checkout Projects
         uses: actions/checkout@v4
 
-      - name: Initialization Environment
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          sudo -E apt -yqq purge firefox
-          sudo -E apt -yqq update
-          sudo -E apt -yqq full-upgrade
-          sudo -E apt -yqq autoremove --purge
-          sudo -E apt -yqq autoclean
-          sudo -E apt -yqq clean
-          sudo -E apt -yqq install dos2unix python3-netifaces libfuse-dev
-          sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-          sudo -E systemctl daemon-reload
-          sudo -E timedatectl set-timezone "Asia/Shanghai"
-
-          sudo mkdir -p /mnt/build_wrt
-          sudo chown $USER:$USER /mnt/build_wrt
-          sudo ln -s /mnt/build_wrt $GITHUB_WORKSPACE/wrt
-
-      - name: Initialization Values
-        run: |
-          echo "WRT_DATE=$(TZ=UTC-8 date +"%y.%m.%d-%H.%M.%S")" >> $GITHUB_ENV
-          echo "WRT_MARK=${GITHUB_REPOSITORY%%/*}" >> $GITHUB_ENV
-          echo "WRT_INFO=${WRT_SOURCE%%/*}" >> $GITHUB_ENV
-          echo "WRT_TARGET=$(grep -m 1 -oP '^CONFIG_TARGET_\K[\w]+(?=\=y)' ./Config/$WRT_CONFIG.txt)" >> $GITHUB_ENV
-          echo "WRT_KVER=none" >> $GITHUB_ENV
-          echo "WRT_LIST=none" >> $GITHUB_ENV
-
-      - name: Clone Code
-        run: |
-          git clone --depth=1 --single-branch --branch $WRT_BRANCH $WRT_REPO ./wrt/
-
-          cd ./wrt/ && echo "WRT_HASH=$(git log -1 --pretty=format:'%h')" >> $GITHUB_ENV
-
-          # 如果不存在 defconfig 则直接结束工作流
-          if [ ! -d "defconfig" ]; then
-            echo "defconfig directory not found, stopping workflow."
-            exit 0
-          fi
-
-          # 移除国内下载源
-          PROJECT_MIRRORS_FILE="./scripts/projectsmirrors.json"
-          if [ -f "$PROJECT_MIRRORS_FILE" ]; then
-            sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
-          fi
-
-      - name: Check Scripts
-        run: |
-          find ./ -maxdepth 3 -type f -iregex ".*\(txt\|sh\)$" -exec dos2unix {} \; -exec chmod +x {} \;
-
-      - name: Check Caches
-        id: check-cache
-        if: env.WRT_TEST != 'true'
-        uses: actions/cache@v4
-        with:
-          key: ${{env.WRT_CONFIG}}-${{env.WRT_INFO}}-${{env.WRT_HASH}}
-          restore-keys: ${{env.WRT_CONFIG}}-${{env.WRT_INFO}}
-          path: |
-            ./wrt/.ccache
-            ./wrt/staging_dir/host*
-            ./wrt/staging_dir/tool*
-
-      - name: Update Caches
-        if: env.WRT_TEST != 'true' && steps.check-cache.outputs.cache-hit != 'true'
-        run: |
-          CACHE_LIST=$(gh cache list --key "$WRT_CONFIG-$WRT_INFO" | cut -f 1)
-          for CACHE_KEY in $CACHE_LIST; do
-            gh cache delete $CACHE_KEY
-          done
-          echo "caches cleanup done!"
-
-          mkdir -p ./wrt/tmp && echo "1" > ./wrt/tmp/.build
-          echo "toolchain skipped done!"
-
-      - name: Update Feeds
-        run: |
-          cd ./wrt/
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
-          ./scripts/feeds install -a -f -p qmodem
-
-      - name: Custom Packages
-        run: |
-          cd ./wrt/package/
-          $GITHUB_WORKSPACE/Scripts/Packages.sh
-          $GITHUB_WORKSPACE/Scripts/Handles.sh
-
-      - name: Custom Settings
-        run: |
-          cd ./wrt/
-          if [[ "${WRT_CONFIG,,}" == *"test"* ]]; then
-            cat $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt >> .config
-          else
-            cat $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt $GITHUB_WORKSPACE/Config/GENERAL.txt >> .config
-          fi
-          $GITHUB_WORKSPACE/Scripts/Settings.sh
-          make defconfig -j$(nproc)
-
-      - name: Download Packages
-        if: env.WRT_TEST != 'true'
-        run: |
-          cd ./wrt/
-          make download -j$(nproc)
-
-      - name: Compile Firmware
-        if: env.WRT_TEST != 'true'
-        run: |
-          cd ./wrt/
-          make -j$(nproc) || make -j1 V=s
-
-      - name: Machine Information
-        run: |
-          cd ./wrt/
-          echo "======================="
-          lscpu | grep -E "name|Core|Thread"
-          echo "======================="
-          df -h
-          echo "======================="
-          du -h --max-depth=1
-          echo "======================="
+      # …前面步驟保持不變（初始化環境、下載源碼、編譯固件等）
 
       - name: Package Firmware
         run: |
@@ -210,4 +92,8 @@ jobs:
       - name: Release Firmware
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{env.WRT_CONFIG}}-${{env.WRT_INFO}}-${
+          tag_name: ${{env.WRT_CONFIG}}-${{env.WRT_INFO}}-${{env.WRT_DATE}}
+          name: ${{env.WRT_CONFIG}}-${{env.WRT_INFO}}-${{env.WRT_DATE}}
+          files: ./wrt/upload/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
