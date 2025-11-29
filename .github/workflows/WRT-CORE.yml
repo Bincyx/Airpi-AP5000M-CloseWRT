@@ -64,28 +64,44 @@ jobs:
       - name: Checkout Projects
         uses: actions/checkout@v4
 
-      # …前面步驟保持不變（初始化環境、下載源碼、編譯固件等）
+      - name: Initialization Environment
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y dos2unix python3-netifaces libfuse-dev
+          sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+          sudo timedatectl set-timezone "Asia/Taipei"
+
+      - name: Clone Code
+        run: |
+          git clone --depth=1 --single-branch --branch $WRT_BRANCH $WRT_REPO ./wrt/ || exit 1
+          ls -lh ./wrt/ || (echo "❌ wrt directory not found, stopping workflow." && exit 1)
+
+      - name: Custom Settings
+        run: |
+          cd ./wrt/ || (echo "❌ wrt directory missing, aborting." && exit 1)
+          if [ -f "$GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt" ]; then
+            cat $GITHUB_WORKSPACE/Config/$WRT_CONFIG.txt $GITHUB_WORKSPACE/Config/GENERAL.txt >> .config
+          else
+            echo "❌ Config/$WRT_CONFIG.txt not found!"
+            exit 1
+          fi
+          make defconfig -j$(nproc)
+
+      - name: Compile Firmware
+        if: env.WRT_TEST != 'true'
+        run: |
+          cd ./wrt/ || (echo "❌ wrt directory missing, aborting." && exit 1)
+          make -j$(nproc) || make -j1 V=s
 
       - name: Package Firmware
         run: |
-          cd ./wrt/ && mkdir ./upload/
-          cp -f ./.config ./upload/Config-"$WRT_CONFIG"-"$WRT_INFO"-"$WRT_BRANCH"-"$WRT_DATE".txt
-
-          if [[ $WRT_TEST != 'true' ]]; then
-            echo "WRT_KVER=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^kernel - \K[\d\.]+' {} \;)" >> $GITHUB_ENV
-            echo "WRT_LIST=$(find ./bin/targets/ -type f -name "*.manifest" -exec grep -oP '^luci-(app|theme)[^ ]*' {} \; | tr '\n' ' ')" >> $GITHUB_ENV
-
-            find ./bin/targets/ -iregex ".*\(buildinfo\|json\|sha256sums\|packages\)$" -exec rm -rf {} +
-
-            for FILE in $(find ./bin/targets/ -type f -iname "*$WRT_TARGET*") ; do
-              EXT=$(basename $FILE | cut -d '.' -f 2-)
-              NAME=$(basename $FILE | cut -d '.' -f 1 | grep -io "\($WRT_TARGET\).*")
-              NEW_FILE="$WRT_INFO"-"$WRT_BRANCH"-"$NAME"-"$WRT_DATE"."$EXT"
-              mv -f $FILE ./upload/$NEW_FILE
-            done
-
+          if [ -d "./wrt/" ]; then
+            cd ./wrt/ && mkdir -p ./upload/
+            cp -f ./.config ./upload/Config-"$WRT_CONFIG"-"$WRT_INFO"-"$WRT_BRANCH"-"$WRT_DATE".txt || echo "⚠️ No .config found"
             find ./bin/targets/ -type f -exec mv -f {} ./upload/ \;
-            make clean -j$(nproc)
+          else
+            echo "❌ wrt directory not found, skipping packaging."
+            exit 0
           fi
 
       - name: Release Firmware
