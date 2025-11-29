@@ -2,9 +2,6 @@
 # 3. Applications
 #
 CONFIG_PACKAGE_luci-app-Airpifanctrl=y
-CONFIG_PACKAGE_luci-app-diskman=y
-CONFIG_PACKAGE_luci-app-diskman_INCLUDE_btrfs_progs=y
-CONFIG_PACKAGE_luci-app-diskman_INCLUDE_lsblk=y
 CONFIG_PACKAGE_luci-app-eqos-mtk=y
 CONFIG_PACKAGE_luci-app-firewall=y
 CONFIG_PACKAGE_luci-app-mtwifi-cfg=y
