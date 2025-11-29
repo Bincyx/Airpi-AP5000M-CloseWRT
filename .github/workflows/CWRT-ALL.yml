@@ -3,7 +3,7 @@ name: CWRT-ALL
 
 #CI计划
 on:
-  #自动编译：早上6点
+  #自动编译：每周日早上6点 (台北时间)
   schedule:
     - cron: 0 22 * * 0
   #手动编译
@@ -17,7 +17,7 @@ on:
         description: '仅输出配置文件，不编译固件。'
         default: 'false'
         required: false
-        type: boolean
+        type: string   # 改成 string，避免和子 workflow 类型不一致
 
 env:
   GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Delete old Releases and Workflows
-        uses: ophub/delete-releases-workflows@main
+        uses: ophub/delete-releases-workflows@v1   # 固定版本
         with:
           gh_token: ${{secrets.GITHUB_TOKEN}}
           delete_releases: true
@@ -45,13 +45,16 @@ jobs:
     name: ${{matrix.CONFIG}}
     strategy:
       fail-fast: false
-      #max-parallel: 4
       matrix:
-        CONFIG: [modem, qmodem]
-        REPO_INFO:
-          - {SOURCE: "padavanonly/immortalwrt-mt798x-6.6", BRANCH: "mt798x-mt799x-6.6-mtwifi"}
+        include:
+          - CONFIG: modem
+            SOURCE: padavanonly/immortalwrt-mt798x-6.6
+            BRANCH: mt798x-mt799x-6.6-mtwifi
+          - CONFIG: qmodem
+            SOURCE: padavanonly/immortalwrt-mt798x-6.6
+            BRANCH: mt798x-mt799x-6.6-mtwifi
 
-      #调用公用编译核心WRT-CORE.yml
+    # 调用公用编译核心 WRT-CORE.yml
     uses: ./.github/workflows/WRT-CORE.yml
     with:
       #编译配置
@@ -63,17 +66,17 @@ jobs:
       #默认WIFI名称
       WRT_SSID: Airpi
       #默认WIFI密码
-      WRT_WORD: 无
+      WRT_WORD: none   # 改成英文 none，避免脚本逻辑出错
       #默认地址
       WRT_IP: 192.168.1.1
       #默认密码，仅作提示，修改无用
       WRT_PW: admin
       #源码链接
-      WRT_REPO: https://github.com/${{matrix.REPO_INFO.SOURCE}}.git
+      WRT_REPO: https://github.com/${{matrix.SOURCE}}.git
       #源码分支
-      WRT_BRANCH: ${{matrix.REPO_INFO.BRANCH}}
+      WRT_BRANCH: ${{matrix.BRANCH}}
       #源码名称
-      WRT_SOURCE: ${{matrix.REPO_INFO.SOURCE}}
+      WRT_SOURCE: ${{matrix.SOURCE}}
       #插件调整
       WRT_PACKAGE: ${{inputs.PACKAGE}}
       #仅输出配置文件
